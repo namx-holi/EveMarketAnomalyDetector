@@ -52,7 +52,6 @@ class Market:
 		buysell        : either "s" or "b". prices of buy or sell avg
 		"""
 
-		print("Making {} request for solar system {}".format(buysell, self._solarsystem_id))
 		char_name = "none"
 		url = MARKET_PRICE_API.format(char_name, self._solarsystem_id, buysell)
 		headers = {'accept': 'application/xml;q=0.9, */*;q=0.8'}
@@ -67,6 +66,7 @@ class Market:
 		"""wrapper of request_prices for buy prices
 		"""
 
+		print("Collecting buy orders for solar system {}".format(self._solarsystem_id))
 		return self._request_prices("b")
 
 
@@ -74,8 +74,8 @@ class Market:
 		"""wrapper of request_prices for sell prices
 		"""
 
+		print("Collecting sell orders for solar system {}".format(self._solarsystem_id))
 		return self._request_prices("s")
-
 
 	@staticmethod
 	def _parse_xml(xml):
@@ -250,7 +250,7 @@ class AnomalyParser:
 			profit_text = (
 				"You will make {} per item".format(profit_formatted) +
 				" ({0:.2%} per item)".format(profit_fraction) +
-				" or {0:,.2f} / m^3".format(profit / item_vol))
+				"\n or {0:,.2f} / m^3".format(profit / item_vol))
 
 			anomaly_lines.append((profit/item_vol, [item_text, buy_text, sell_text, profit_text]))
 
@@ -261,12 +261,6 @@ class AnomalyParser:
 		anomaly_lines = [anom[1] for anom in anomaly_lines]
 
 		return anomaly_lines
-
-
-
-
-
-
 
 
 
@@ -335,11 +329,23 @@ if __name__ == "__main__":
 	# Initialise anomaly parser
 	anomaly_parser = AnomalyParser(typeID_dict, solarsystemID_dict)
 
+	print("")
+	print("Major trade hubs: Jita, Amarr, Rens, Dodixie, Hek")
+	print("Secondary trade hubs: Oursulaert, Tash-Murkon Prime, Agil")
+
+	sys1_id = -1
+	while sys1_id == -1:
+		sys1_name = input("Input first  system: ")
+		sys1_id = solarsystemID_dict.name2id(sys1_name)
+
+	sys2_id = -1
+	while sys2_id == -1:
+		sys2_name = input("Input second system: ")
+		sys2_id = solarsystemID_dict.name2id(sys2_name)
+
+	print("")
+
 	# Create markets
-	sys1_name   = "Jita"
-	sys2_name   = "Amarr"
-	sys1_id     = solarsystemID_dict.name2id(sys1_name)
-	sys2_id     = solarsystemID_dict.name2id(sys2_name)
 	sys1_market = Market(sys1_id)
 	sys2_market = Market(sys2_id)
 
@@ -347,19 +353,11 @@ if __name__ == "__main__":
 	sys1_market.update_item_prices()
 	sys2_market.update_item_prices()
 
-	# # Get a type_id of an item
-	# item_name = "Plagioclase"
-	# type_id = typeID_dict.name2id(item_name)
-
-	# sys1_price = sys1_market.get_prices_for_typeID(type_id)
-	# sys2_price = sys2_market.get_prices_for_typeID(type_id)
-	# print(sys1_price)
-	# print(sys2_price)
-
 	# Find anomalies
 	anomalies = sys1_market.find_anomalies(sys2_market)
 	results = anomaly_parser.parse(anomalies)
 
+	print("")
 	for result in results:
 		print("\n".join(result))
 		print()
