@@ -28,7 +28,7 @@ import json
 
 
 MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
-
+ANOMALY_FACTOR = 0.2 # Percent diff
 
 class Market:
 
@@ -131,9 +131,45 @@ class Market:
 			return {}
 
 
-	def compare_market(market):
-		items_1 = this._items
+	def find_anomalies(self, market):
+		items_1 = self._items
 		items_2 = market.get_items()
+
+		# Find items that can match up to compare
+		matched_items = []
+		for item_key in items_1:
+			if item_key in items_2.keys():
+				matched_items.append((item_key, items_1[item_key], items_2[item_key]))
+
+		# Anomalies for between this and the other market and the other market and this
+		anomalies = []
+		# anomalies = dict(import_items=[], export_items=[], export_to=market.get_id())
+		for typeID, item1, item2 in matched_items:
+			anomaly = {}
+
+			if item2["buy"] is not None and item1["sell"] is not None:
+				if item2["buy"] / item1["sell"] - 1 >= ANOMALY_FACTOR:
+					anomaly = {}
+					anomaly[self._solarsystem_id] = item1
+					anomaly[market.get_id()] = item2
+					anomalies.append(anomaly)
+
+			if item1["buy"] is not None and item2["sell"] is not None:
+				if item1["buy"] / item2["sell"] - 1 >= ANOMALY_FACTOR:
+					anomaly = {}
+					anomaly[self._solarsystem_id] = item1
+					anomaly[market.get_id()] = item2
+					anomalies.append(anomaly)
+
+		return anomalies
+
+
+class AnomalyDisplayer:
+	def __init__(self, typeID_dict, solarsystemID_dict):
+		self._typeID_dict = typeID_dict
+		self._solarsystemID_dict = solarsystemID_dict
+
+
 
 
 
@@ -162,36 +198,16 @@ class typeIDDictionary:
 
 
 
-class solarsystemIDDictionary:
-	def __init__(self, systemid_filepath):
-		print("Loading in solarsystemIDs")
-		with open(systemid_filepath, "r") as stream:
-			self._data = json.load(stream)
-
-	def id2name(self, solarsystemID):
-		try:
-			return self._data[int(solarsystemID)]
-		except KeyError:
-			return ""
-
-	def name2id(self, name):
-		for solarsystemID in self._data.keys():
-			if self._data[solarsystemID].lower() == name.lower():
-				return int(solarsystemID)
-		return -1
-
-
-
 if __name__ == "__main__":
 	# Initialise dictionaries
-	typeid_dict = typeIDDictionary("data/typeIDs.json")
-	solarsystemid_dict = solarsystemIDDictionary("data/solarsystemIDs.json")
+	typeID_dict = typeIDDictionary("data/typeIDs.json")
+	solarsystemID_dict = solarsystemIDDictionary("data/solarsystemIDs.json")
 
 	# Create markets
 	sys1_name   = "Jita"
 	sys2_name   = "Amarr"
-	sys1_id     = solarsystemid_dict.name2id(sys1_name)
-	sys2_id     = solarsystemid_dict.name2id(sys2_name)
+	sys1_id     = solarsystemID_dict.name2id(sys1_name)
+	sys2_id     = solarsystemID_dict.name2id(sys2_name)
 	sys1_market = Market(sys1_id)
 	sys2_market = Market(sys2_id)
 
@@ -201,9 +217,13 @@ if __name__ == "__main__":
 
 	# Get a type_id of an item
 	item_name = "Plagioclase"
-	type_id = typeid_dict.name2id(item_name)
+	type_id = typeID_dict.name2id(item_name)
 
 	sys1_price = sys1_market.get_prices_for_typeID(type_id)
 	sys2_price = sys2_market.get_prices_for_typeID(type_id)
 	print(sys1_price)
 	print(sys2_price)
+
+	# Find anomalies
+	anomalies = sys1_market.find_anomalies(sys2_market)
+	print(anomalies)
