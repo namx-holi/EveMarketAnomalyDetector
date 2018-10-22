@@ -1,6 +1,4 @@
 
-
-
 """
 enter a location
 
@@ -23,12 +21,13 @@ find anomalies
 look up typeids and display
 """
 
+
 import requests
 import xmltodict
 import json
 
 
-API_FORMAT = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
+MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
 
 
 class Market:
@@ -42,6 +41,10 @@ class Market:
 		return self._items
 
 
+	def get_id(self):
+		return self._solarsystem_id
+
+
 	def _request_prices(self, buysell):
 		"""returns a dictionary of all pricess for buy or sell
 
@@ -50,7 +53,7 @@ class Market:
 
 		print("Making {} request for solar system {}".format(buysell, self._solarsystem_id))
 		char_name = "none"
-		url = API_FORMAT.format(char_name, self._solarsystem_id, buysell)
+		url = MARKET_PRICE_API.format(char_name, self._solarsystem_id, buysell)
 		headers = {'accept': 'application/xml;q=0.9, */*;q=0.8'}
 		response = requests.get(url=url, headers=headers)
 
@@ -140,8 +143,7 @@ class typeIDDictionary:
 		with open(typeid_filepath, "r") as stream:
 			self._data = json.load(stream)
 
-
-	def typeID_to_name(self, typeID):
+	def id2name(self, typeID):
 		try:
 			return self._data[int(typeID)]["name"]
 		except KeyError:
@@ -149,10 +151,10 @@ class typeIDDictionary:
 		except ValueError:
 			return ""
 
-	def name_to_typeID(self, name):
+	def name2id(self, name):
 		for typeID in self._data.keys():
 			try:
-				if self._data[typeID]["name"] == name:
+				if self._data[typeID]["name"].lower() == name.lower():
 					return int(typeID)
 			except KeyError:
 				continue
@@ -160,17 +162,48 @@ class typeIDDictionary:
 
 
 
+class solarsystemIDDictionary:
+	def __init__(self, systemid_filepath):
+		print("Loading in solarsystemIDs")
+		with open(systemid_filepath, "r") as stream:
+			self._data = json.load(stream)
+
+	def id2name(self, solarsystemID):
+		try:
+			return self._data[int(solarsystemID)]
+		except KeyError:
+			return ""
+
+	def name2id(self, name):
+		for solarsystemID in self._data.keys():
+			if self._data[solarsystemID].lower() == name.lower():
+				return int(solarsystemID)
+		return -1
+
+
+
 if __name__ == "__main__":
-	solarsystem_id = 30002187 # jita
-	jita_market = Market(solarsystem_id)
-	# typeid_dict = typeIDDictionary("data/typeIDs.yaml")
+	# Initialise dictionaries
 	typeid_dict = typeIDDictionary("data/typeIDs.json")
+	solarsystemid_dict = solarsystemIDDictionary("data/solarsystemIDs.json")
 
+	# Create markets
+	sys1_name   = "Jita"
+	sys2_name   = "Amarr"
+	sys1_id     = solarsystemid_dict.name2id(sys1_name)
+	sys2_id     = solarsystemid_dict.name2id(sys2_name)
+	sys1_market = Market(sys1_id)
+	sys2_market = Market(sys2_id)
 
+	# Update the market prices
+	sys1_market.update_item_prices()
+	sys2_market.update_item_prices()
+
+	# Get a type_id of an item
 	item_name = "Plagioclase"
-	typeid = typeid_dict.name_to_typeID(item_name)
+	type_id = typeid_dict.name2id(item_name)
 
-	jita_market.update_item_prices()
-
-	prices = jita_market.get_prices_for_typeID(typeid)
-	print(prices)
+	sys1_price = sys1_market.get_prices_for_typeID(type_id)
+	sys2_price = sys2_market.get_prices_for_typeID(type_id)
+	print(sys1_price)
+	print(sys2_price)
