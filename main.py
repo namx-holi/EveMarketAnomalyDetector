@@ -33,9 +33,10 @@ SHORTEN_PRICES = False
 
 class Market:
 
-	def __init__(self, solarsystem_id):
+	def __init__(self, solarsystem_id, name=""):
 		self._solarsystem_id = solarsystem_id
 		self._items = {}
+		self._name = name if name else str(solarsystem_id)
 
 
 	def get_items(self):
@@ -44,6 +45,10 @@ class Market:
 
 	def get_id(self):
 		return self._solarsystem_id
+
+
+	def get_name(self):
+		return self._name
 
 
 	def _request_prices(self, buysell):
@@ -66,7 +71,7 @@ class Market:
 		"""wrapper of request_prices for buy prices
 		"""
 
-		print("Collecting buy orders for solar system {}".format(self._solarsystem_id))
+		print("Collecting buy orders for {}".format(self._name))
 		return self._request_prices("b")
 
 
@@ -74,7 +79,7 @@ class Market:
 		"""wrapper of request_prices for sell prices
 		"""
 
-		print("Collecting sell orders for solar system {}".format(self._solarsystem_id))
+		print("Collecting sell orders for {}".format(self._name))
 		return self._request_prices("s")
 
 	@staticmethod
@@ -339,15 +344,15 @@ if __name__ == "__main__":
 		sys1_id = solarsystemID_dict.name2id(sys1_name)
 
 	sys2_id = -1
-	while sys2_id == -1:
+	while sys2_id == -1 or sys1_id == sys2_id:
 		sys2_name = input("Input second system: ")
 		sys2_id = solarsystemID_dict.name2id(sys2_name)
 
 	print("")
 
 	# Create markets
-	sys1_market = Market(sys1_id)
-	sys2_market = Market(sys2_id)
+	sys1_market = Market(sys1_id, name=sys1_name.title())
+	sys2_market = Market(sys2_id, name=sys2_name.title())
 
 	# Update the market prices
 	sys1_market.update_item_prices()
