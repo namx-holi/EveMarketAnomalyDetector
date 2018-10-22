@@ -1,1 +1,2 @@
 xmltodict==0.11.0
+PyYAML==3.13

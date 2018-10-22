@@ -25,6 +25,7 @@ look up typeids and display
 
 import requests
 import xmltodict
+import yaml
 
 
 API_FORMAT = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
@@ -133,16 +134,35 @@ class Market:
 
 
 
+class typeIDDictionary:
+	def __init__(self, typeid_filepath):
+		print("Loading in typeIDs")
+		with open(typeid_filepath, "r") as stream:
+			self._data = yaml.load(stream)
+
+	def typeID_to_name(self, typeID):
+		try:
+			return self._data[typeID]["name"]
+		except KeyError:
+			return ""
+
+	def name_to_typeID(self, name):
+		for typeID in self._data.keys():
+			if self._data[typeID]["name"] == name:
+				return typeID
+		return -1
+
 
 
 if __name__ == "__main__":
 	solarsystem_id = 30002187 # jita
 	jita_market = Market(solarsystem_id)
+	typeid_dict = typeIDDictionary("data/typeIDs.yaml")
 
 	jita_market.update_item_prices()
 
-	prices = jita_market.get_prices_for_typeID(34169)
-	print(prices)
+	item_name = "Plagioclase"
+	typeid = typeid_dict.name_to_typeID(item_name)
 
-	# prices = get_buy_prices(solarsystem_id)
-	# print(prices[0])
+	prices = jita_market.get_prices_for_typeID(typeid)
+	print(prices)
