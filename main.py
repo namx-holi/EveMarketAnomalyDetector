@@ -250,7 +250,7 @@ class AnomalyParser:
 			profit_text = (
 				"You will make {} per item".format(profit_formatted) +
 				" ({0:.2%} per item)".format(profit_fraction) +
-				" or {0:.2f} / m^3".format(profit / item_vol))
+				" or {0:,.2f} / m^3".format(profit / item_vol))
 
 			anomaly_lines.append((profit/item_vol, [item_text, buy_text, sell_text, profit_text]))
 
