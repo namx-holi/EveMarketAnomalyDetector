@@ -26,17 +26,22 @@ import requests
 import xmltodict
 import json
 
+from id_dictionaries import typeIDDictionary, solarsystemIDDictionary
+
+
 
 MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
 ANOMALY_FACTOR = 0.2 # Percent diff
 SHORTEN_PRICES = False
 
+
+
 class Market:
 
 	def __init__(self, solarsystem_id, name=""):
 		self._solarsystem_id = solarsystem_id
-		self._items = {}
 		self._name = name if name else str(solarsystem_id)
+		self._items = {}
 
 
 	def get_items(self):
@@ -266,63 +271,6 @@ class AnomalyParser:
 		anomaly_lines = [anom[1] for anom in anomaly_lines]
 
 		return anomaly_lines
-
-
-
-class typeIDDictionary:
-	def __init__(self, typeid_filepath):
-		print("Loading in typeIDs")
-		with open(typeid_filepath, "r") as stream:
-			self._data = json.load(stream)
-
-	def id2name(self, typeID):
-		try:
-			return self._data[str(typeID)]["name"]
-		except KeyError:
-			return ""
-		except ValueError:
-			return ""
-
-	def name2id(self, name):
-		for typeID in self._data.keys():
-			try:
-				if self._data[typeID]["name"].lower() == name.lower():
-					return int(typeID)
-			except KeyError:
-				continue
-		return -1
-
-	def id2vol(self, typeID):
-		try:
-			return self._data[str(typeID)]["volume"]
-		except KeyError:
-			return 1.0
-		except ValueError:
-			return 1.0
-
-	def name2vol(self, name):
-		name = self.name2id(name)
-		return id2vol(name)
-
-
-
-class solarsystemIDDictionary:
-	def __init__(self, systemid_filepath):
-		print("Loading in solarsystemIDs")
-		with open(systemid_filepath, "r") as stream:
-			self._data = json.load(stream)
-
-	def id2name(self, solarsystemID):
-		try:
-			return self._data[str(solarsystemID)]
-		except KeyError:
-			return ""
-
-	def name2id(self, name):
-		for solarsystemID in self._data.keys():
-			if self._data[solarsystemID].lower() == name.lower():
-				return int(solarsystemID)
-		return -1
 
 
 
