@@ -3,6 +3,8 @@ import json
 import requests
 from multiprocessing import Pool
 import tqdm
+from sys import stdout
+
 
 from id_dictionaries import typeIDDictionary
 
@@ -25,6 +27,13 @@ DATAPOINT_MAX = 10
 # REQUEST_DEBUG = True
 REQUEST_DEBUG = False
 if REQUEST_DEBUG:IDS_PER_REQUEST=2
+
+
+def printf(*args):
+	stdout.write(" ".join(map(str, args)))
+	stdout.flush()
+
+
 
 class StationMarket:
 
@@ -96,21 +105,22 @@ class StationMarket:
 
 
 	def load_datapoints(self, datapoint_file):
-		print("Loading datapoints...", end="\r")
+		print("Loading datapoints...", end="")
 		with open(datapoint_file, "r") as stream:
-			self._datapoints = json.load(strem)
-		print("Loaded datapoints    ")
+			self._datapoints = json.load(stream)
+		print("\rLoaded datapoints    ")
 
 
 	def save_datapoints(self, datapoint_file):
-		print("Saving datapoints...", end="\r")
+		printf("Saving datapoints...")
 		with open(datapoint_file, "w") as stream:
 			json.dump(self._datapoints, stream, indent=4, sort_keys=True)
-		print("Saved datapoints    ")
+		printf("\rSaved datapoints    \n")
 
 
 	def add_current_to_datapoint(self):
-		for typeID in tqdm.tqdm(self._items, unit="typeIDs", desc="Adding datapoint"):
+		printf("Adding current datapoint to datapoints...")
+		for typeID in self._items:
 
 			# If the typeID already exists
 			if typeID in self._datapoints.keys():
@@ -126,12 +136,23 @@ class StationMarket:
 			# If it doesn't exist, just create it
 			else:
 				self._datapoints[typeID] = [self._items[typeID]]
+		printf("\rCurrent datapoint added to datapoints    \n")
+
+
+	def populate_items_from_datapoints(self):
+		items = {}
+		for typeID in self._datapoints.keys():
+			items[typeID] = self._datapoints[typeID][-1]
+		self._items = items
 
 
 	def calculate_volatility(self):
 		pass
 		# for typeID in tqdm.tqdm(self._items):
 
+
+LOAD_DATAPOINTS = True
+LOAD_ITEMS_FROM_DATAPOINTS = False
 
 
 if __name__ == "__main__":
@@ -142,19 +163,17 @@ if __name__ == "__main__":
 	hub = "Jita"
 	hub_id = trade_hubs[hub]
 	market = StationMarket(typeID_dict, hub_id, hub)
-	market.update_prices()
 
+	# Load in datapoints if need be
 	datapoint_file = "saves/datapoints1.save"
+	if LOAD_DATAPOINTS or LOAD_ITEMS_FROM_DATAPOINTS:
+		market.load_datapoints(datapoint_file)
 
+	if LOAD_ITEMS_FROM_DATAPOINTS:
+		market.populate_items_from_datapoints()
+	else:
+		market.update_prices()
+
+	# Add our current data to datapoints and save
 	market.add_current_to_datapoint()
 	market.save_datapoints(datapoint_file)
-
-
-
-	# all_ids = typeID_dict.get_id_list()
-	# print(dir(typeID_dict))
-	# print(typeID_dict.get_id_list())
-	# print(len(all_ids))
-
-	# print(all_ids)
-
