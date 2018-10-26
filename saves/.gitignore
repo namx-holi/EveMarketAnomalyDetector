@@ -1,0 +1,5 @@
+# Ignore all saves
+*.save
+
+# But not the save example
+!empty_datapoint.save
