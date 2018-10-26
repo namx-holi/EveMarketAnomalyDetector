@@ -26,6 +26,16 @@ class typeIDDictionary:
 				continue
 		return -1
 
+	def name2closematchid(self, name):
+		matches = []
+		for typeID in self._data.keys():
+			try:
+				if name.lower() in self._data[typeID]["name"].lower():
+					matches.append(typeID)
+			except KeyError:
+				continue
+		return matches
+
 	def id2vol(self, typeID):
 		try:
 			return self._data[str(typeID)]["volume"]
