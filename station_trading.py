@@ -7,7 +7,7 @@ from sys import stdout
 
 
 from id_dictionaries import typeIDDictionary
-
+from config import station_trading_config as cfg
 
 
 trade_hubs = {
@@ -18,15 +18,15 @@ trade_hubs = {
 	"Hek": 60005686 
 }
 
-FUZZWORK_API = "https://market.fuzzwork.co.uk/aggregates/?region={}&types={}"
-IDS_PER_REQUEST = 1000
-PROCESS_COUNT = 8
-REQUEST_RETRY_COUNT = 3
-DATAPOINT_MAX = 10
+# cfg.FUZZWORK_API = "https://market.fuzzwork.co.uk/aggregates/?region={}&types={}"
+# cfg.IDS_PER_REQUEST = 1000
+# cfg.PROCESS_COUNT = 8
+# cfg.REQUEST_RETRY_COUNT = 3
+# cfg.DATAPOINT_MAX = 10
 
 # REQUEST_DEBUG = True
 REQUEST_DEBUG = False
-if REQUEST_DEBUG:IDS_PER_REQUEST=2
+if REQUEST_DEBUG:cfg.IDS_PER_REQUEST=2
 
 
 def printf(*args):
@@ -51,13 +51,13 @@ class StationMarket:
 
 	def _request_prices(self, typeID_chunk, retry_count=0):
 		typeIDs = ",".join([str(typeID) for typeID in typeID_chunk])
-		url = FUZZWORK_API.format(self._location_id, typeIDs)
+		url = cfg.FUZZWORK_API.format(self._location_id, typeIDs)
 		response = requests.get(url=url)
 		
 		try:
 			return json.loads(response.text)
 		except json.JSONDecodeError:
-			if retry_count > 3:
+			if retry_count > cfg.REQUEST_RETRY_COUNT:
 				return []
 			else:
 				return self._request_prices(typeID_chunk, retry_count=retry_count+1)
@@ -68,16 +68,16 @@ class StationMarket:
 
 		# Break the typeID_list into chunks
 		typeID_chunk_list = [
-			typeID_list[i * IDS_PER_REQUEST:(i + 1) * IDS_PER_REQUEST]
+			typeID_list[i * cfg.IDS_PER_REQUEST:(i + 1) * cfg.IDS_PER_REQUEST]
 			for i in range(
-				(len(typeID_list) + IDS_PER_REQUEST - 1) // IDS_PER_REQUEST
+				(len(typeID_list) + cfg.IDS_PER_REQUEST - 1) // cfg.IDS_PER_REQUEST
 			)]
 
 		if REQUEST_DEBUG:
 			typeID_chunk_list=[typeID_chunk_list[i] for i in range(5)]
 
 		# Make requests concurrently so it's faster
-		pool = Pool(processes=PROCESS_COUNT)
+		pool = Pool(processes=cfg.PROCESS_COUNT)
 		results = [
 			x for x in tqdm.tqdm(
 				pool.imap_unordered(self._request_prices, typeID_chunk_list),
@@ -107,7 +107,12 @@ class StationMarket:
 	def load_datapoints(self, datapoint_file):
 		print("Loading datapoints...", end="")
 		with open(datapoint_file, "r") as stream:
-			self._datapoints = json.load(stream)
+			try:
+				self._datapoints = json.load(stream)
+			except json.decoder.JSONDecodeError:
+				self._datapoints = {}
+				print("\rFailed to load datapoints")
+				return
 		print("\rLoaded datapoints    ")
 
 
@@ -127,7 +132,7 @@ class StationMarket:
 
 				# Make sure the datapoint count is less than the max
 				# we loop it in case the datapoint count has changed
-				while len(self._datapoints[typeID]) >= DATAPOINT_MAX:
+				while len(self._datapoints[typeID]) >= cfg.DATAPOINT_MAX:
 					del self._datapoints[typeID][0]
 				
 				# Append the new one
@@ -146,26 +151,21 @@ class StationMarket:
 		self._items = items
 
 
-
-LOAD_DATAPOINTS = True
-LOAD_ITEMS_FROM_DATAPOINTS = True
-
-
 if __name__ == "__main__":
 	# Initialise dictionaries
 	typeID_dict = typeIDDictionary("data/typeIDs.json")
 
 	# create the margin market
-	hub = "Jita"
+	hub = "Amarr"
 	hub_id = trade_hubs[hub]
 	market = StationMarket(typeID_dict, hub_id, hub)
 
 	# Load in datapoints if need be
 	datapoint_file = "saves/datapoints1.save"
-	if LOAD_DATAPOINTS or LOAD_ITEMS_FROM_DATAPOINTS:
+	if cfg.LOAD_DATAPOINTS or cfg.LOAD_ITEMS_FROM_DATAPOINTS:
 		market.load_datapoints(datapoint_file)
 
-	if LOAD_ITEMS_FROM_DATAPOINTS:
+	if cfg.LOAD_ITEMS_FROM_DATAPOINTS:
 		market.populate_items_from_datapoints()
 	else:
 		market.update_prices()

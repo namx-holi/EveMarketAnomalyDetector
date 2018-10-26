@@ -30,9 +30,9 @@ from id_dictionaries import typeIDDictionary, solarsystemIDDictionary
 
 
 
-MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
-ANOMALY_FACTOR = 0.2 # Percent diff
-SHORTEN_PRICES = False
+# cfg.MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
+# cfg.ANOMALY_FACTOR = 0.2 # Percent diff
+# cfg.SHORTEN_PRICES = False
 
 
 
@@ -63,7 +63,7 @@ class Market:
 		"""
 
 		char_name = "none"
-		url = MARKET_PRICE_API.format(char_name, self._solarsystem_id, buysell)
+		url = cfg.MARKET_PRICE_API.format(char_name, self._solarsystem_id, buysell)
 		headers = {'accept': 'application/xml;q=0.9, */*;q=0.8'}
 		response = requests.get(url=url, headers=headers)
 
@@ -159,7 +159,7 @@ class Market:
 			anomaly = {}
 
 			if item2["buy"] is not None and item1["sell"] is not None:
-				if item2["buy"] / item1["sell"] - 1 >= ANOMALY_FACTOR:
+				if item2["buy"] / item1["sell"] - 1 >= cfg.ANOMALY_FACTOR:
 					anomaly = dict(typeID=typeID)
 
 					# Inverted buy/sell than the top condition because
@@ -174,7 +174,7 @@ class Market:
 					anomalies.append(anomaly)
 
 			if item1["buy"] is not None and item2["sell"] is not None:
-				if item1["buy"] / item2["sell"] - 1 >= ANOMALY_FACTOR:
+				if item1["buy"] / item2["sell"] - 1 >= cfg.ANOMALY_FACTOR:
 					anomaly = dict(typeID=typeID)
 
 					# Inverted buy/sell than the top condition because
@@ -210,7 +210,7 @@ class AnomalyParser:
 			item_vol         = self._typeID_dict.id2vol(anomaly["typeID"])
 			profit_fraction  = (sell_price / buy_price) - 1
 
-			if SHORTEN_PRICES:
+			if cfg.SHORTEN_PRICES:
 				if buy_price/1e12 > 1:
 					buy_price_formatted = "{0:.2f}T ISK".format(buy_price/1e12)
 				elif buy_price/1e9 > 1:
@@ -224,7 +224,7 @@ class AnomalyParser:
 			else:
 				buy_price_formatted = "{0:,.2f} ISK".format(buy_price)
 
-			if SHORTEN_PRICES:
+			if cfg.SHORTEN_PRICES:
 				if sell_price/1e12 > 1:
 					sell_price_formatted = "{0:.2f}T ISK".format(sell_price/1e12)
 				elif sell_price/1e9 > 1:
@@ -238,7 +238,7 @@ class AnomalyParser:
 			else:
 				sell_price_formatted = "{0:,.2f} ISK".format(sell_price)
 
-			if SHORTEN_PRICES:
+			if cfg.SHORTEN_PRICES:
 				if profit/1e12 > 1:
 					profit_formatted = "{0:.2f}T ISK".format(profit/1e12)
 				elif profit/1e9 > 1:
