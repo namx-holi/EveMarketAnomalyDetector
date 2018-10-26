@@ -146,13 +146,9 @@ class StationMarket:
 		self._items = items
 
 
-	def calculate_volatility(self):
-		pass
-		# for typeID in tqdm.tqdm(self._items):
-
 
 LOAD_DATAPOINTS = True
-LOAD_ITEMS_FROM_DATAPOINTS = False
+LOAD_ITEMS_FROM_DATAPOINTS = True
 
 
 if __name__ == "__main__":
