@@ -29,13 +29,6 @@ import json
 from id_dictionaries import typeIDDictionary, solarsystemIDDictionary
 
 
-
-# cfg.MARKET_PRICE_API = "https://api.eve-marketdata.com/api/item_prices2.xml?char_name={}&solarsystem_ids={}&buysell={}"
-# cfg.ANOMALY_FACTOR = 0.2 # Percent diff
-# cfg.SHORTEN_PRICES = False
-
-
-
 class Market:
 
 	def __init__(self, solarsystem_id, name=""):

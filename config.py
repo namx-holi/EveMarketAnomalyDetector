@@ -14,5 +14,5 @@ class station_trading_config:
 	REQUEST_RETRY_COUNT = 3
 	DATAPOINT_MAX = 10
 
-	LOAD_DATAPOINTS = True
+	LOAD_DATAPOINTS = False
 	LOAD_ITEMS_FROM_DATAPOINTS = False

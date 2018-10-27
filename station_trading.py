@@ -5,9 +5,9 @@ from multiprocessing import Pool
 import tqdm
 from sys import stdout
 
-
 from id_dictionaries import typeIDDictionary
 from config import station_trading_config as cfg
+from finance_equation import calculate_weighting
 
 
 trade_hubs = {
@@ -17,12 +17,6 @@ trade_hubs = {
 	"Rens":60004588,
 	"Hek": 60005686 
 }
-
-# cfg.FUZZWORK_API = "https://market.fuzzwork.co.uk/aggregates/?region={}&types={}"
-# cfg.IDS_PER_REQUEST = 1000
-# cfg.PROCESS_COUNT = 8
-# cfg.REQUEST_RETRY_COUNT = 3
-# cfg.DATAPOINT_MAX = 10
 
 # REQUEST_DEBUG = True
 REQUEST_DEBUG = False
@@ -48,6 +42,16 @@ class StationMarket:
 	def get_id(self):    return self._location_id
 	def get_name(self):  return self._name
 
+	@staticmethod
+	def _parse_items(items):
+		# This is horrible
+		for t in items.keys(): # t = typeID
+			for bs in items[t]: # bs = buy or sell
+				for v in items[t][bs].keys(): # v = value
+					items[t][bs][v] = float(items[t][bs][v])
+
+		return items
+
 
 	def _request_prices(self, typeID_chunk, retry_count=0):
 		typeIDs = ",".join([str(typeID) for typeID in typeID_chunk])
@@ -56,6 +60,7 @@ class StationMarket:
 		
 		try:
 			return json.loads(response.text)
+
 		except json.JSONDecodeError:
 			if retry_count > cfg.REQUEST_RETRY_COUNT:
 				return []
@@ -92,16 +97,22 @@ class StationMarket:
 		for result in results:
 			items.update(result)
 
+		# Make sure all the prices are floats
+		self._parse_items(items)
+
 		# prune items with 0 market volume
-		pruned_items = {}
+		filtered_items = {}
 		for typeID in items.keys():
 			buy  = items[typeID]["buy"]
 			sell = items[typeID]["sell"]
-			if (buy["volume"] != 0 or sell["volume"] != 0):
-				pruned_items[typeID] = items[typeID]
+			if (
+				(buy["volume"] != 0 or sell["volume"] != 0) and
+				(buy["max"] != 0 and sell["min"] != 0)
+			):
+				filtered_items[typeID] = items[typeID]
 
-		print("Collected valid price data for {} items".format(len(pruned_items)))
-		self._items = pruned_items
+		print("Collected valid price data for {} items".format(len(filtered_items)))
+		self._items = filtered_items
 
 
 	def load_datapoints(self, datapoint_file):
@@ -112,8 +123,10 @@ class StationMarket:
 			except json.decoder.JSONDecodeError:
 				self._datapoints = {}
 				print("\rFailed to load datapoints")
-				return
+				return False
+
 		print("\rLoaded datapoints    ")
+		return True
 
 
 	def save_datapoints(self, datapoint_file):
@@ -151,6 +164,33 @@ class StationMarket:
 		self._items = items
 
 
+	def find_large_margins(self, brokers_fee=0.028, sales_tax=0.02):
+		item_list = []
+
+		for typeID in self._items:
+			item_copy = self._items[typeID].copy()
+			item_copy.update(dict(typeID=typeID))
+			item_list.append(item_copy)
+
+		item_list.sort(key=lambda item: calculate_weighting(
+			item, brokers_fee, sales_tax),
+			reverse=True)
+
+		return item_list
+
+
+def display_item(typeID_dict, item):
+	print("Item name: {}".format(typeID_dict.id2name(item["typeID"])))
+	print("  Buy for {0:,.2f} ISK".format(item["buy"]["max"]))
+	print("  Sell for {0:,.2f} ISK".format(item["sell"]["min"]))
+	print()
+	print("  Buy volume is {0:,.0f}".format(item["buy"]["volume"]))
+	print("  Buy order count is {0:,.0f}".format(item["buy"]["orderCount"]))
+	print("  Sell volume is {0:,.0f}".format(item["sell"]["volume"]))
+	print("  Sell order count is {0:,.0f}".format(item["sell"]["orderCount"]))
+	print()
+
+
 if __name__ == "__main__":
 	# Initialise dictionaries
 	typeID_dict = typeIDDictionary("data/typeIDs.json")
@@ -163,12 +203,22 @@ if __name__ == "__main__":
 	# Load in datapoints if need be
 	datapoint_file = "saves/datapoints1.save"
 	if cfg.LOAD_DATAPOINTS or cfg.LOAD_ITEMS_FROM_DATAPOINTS:
-		market.load_datapoints(datapoint_file)
-
-	if cfg.LOAD_ITEMS_FROM_DATAPOINTS:
-		market.populate_items_from_datapoints()
+		if market.load_datapoints(datapoint_file):
+			if cfg.LOAD_ITEMS_FROM_DATAPOINTS:
+				market.populate_items_from_datapoints()
+		else:
+			market.update_prices()
 	else:
 		market.update_prices()
+
+	# Find good things
+	good_things = market.find_large_margins(
+		brokers_fee=0.028,
+		sales_tax=0.02)
+
+	# print top good thing
+	display_item(typeID_dict, good_things[0])
+
 
 	# Add our current data to datapoints and save
 	market.add_current_to_datapoint()
